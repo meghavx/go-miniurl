@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -41,6 +42,9 @@ func main() {
 		shortenUrlHandler(w, r, db)
 	})
 
+	router.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
+		redirectUrlHandler(w, r, db)
+	})
 	err = http.ListenAndServe(":8080", router)
 	if err != nil {
 		log.Fatal("Failed to start server", err)
@@ -81,6 +85,18 @@ func shortenUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+func redirectUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	code := chi.URLParam(r, "code")
+	id := base62Decode(code)
+	var longUrl string
+	err := db.QueryRow("SELECT long_url FROM urls WHERE id = ?", id).Scan(&longUrl)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, longUrl, http.StatusMovedPermanently)
+}
+
 func base62Encode(num uint64) string {
 	if num == 0 {
 		return "0"
@@ -94,4 +110,12 @@ func base62Encode(num uint64) string {
 		res[i], res[j] = res[j], res[i]
 	}
 	return string(res)
+}
+
+func base62Decode(s string) uint64 {
+	var num uint64
+	for i := 0; i < len(s); i++ {
+		num = num*62 + uint64(bytes.IndexByte(chars, s[i]))
+	}
+	return num
 }
