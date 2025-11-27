@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -66,17 +68,24 @@ func shortenUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", req.Url)
-	if err != nil {
-		log.Println("Failed to insert url into db:", err)
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
+	req.Url = strings.TrimSpace(req.Url)
+
+	var id int64
+
+	err = db.QueryRow("SELECT id FROM urls WHERE long_url = ?", req.Url).Scan(&id)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", req.Url)
+		if err != nil {
+			log.Println("Failed to insert url into db:", err)
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+		id, _ = res.LastInsertId()
 	}
 
-	id, _ := res.LastInsertId()
-
 	code := base62Encode(uint64(id))
-	shortUrl := fmt.Sprintf("http://localhost:3000/%s", code)
+	shortUrl := fmt.Sprintf("http://localhost:8080/%s", code)
 
 	resp := map[string]string{"shortUrl": shortUrl}
 
