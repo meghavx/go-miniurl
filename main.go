@@ -2,110 +2,191 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/redis/go-redis/v9"
 )
 
 var chars = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func main() {
+	// Setup SQLite db
 	db, err := sql.Open("sqlite3", "urls.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	createTable := `
+	if _, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS urls (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			long_url TEXT NOT NULL
 		);
-	`
-	_, err = db.Exec(createTable)
-	if err != nil {
+	`); err != nil {
 		log.Fatal("Failed to create table:", err)
 	}
 
+	// Setup Redis client
+	ctx := context.Background()
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	defer rdb.Close()
+
+	log.Println("Server started on localhost:8080")
+
+	// Router
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
-	router.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+	// UI Related
+	router.Handle("/static/*", http.StripPrefix(
+		"/static/",
+		http.FileServer(http.Dir("./static"))),
+	)
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	})
 
-	router.Get("/", greetHandler)
-
+	// App routes
 	router.Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
-		shortenUrlHandler(w, r, db)
+		log.Println("====== POST/shorten-url Request ======")
+		shortenUrlHandler(w, r, db, rdb, ctx)
 	})
 
 	router.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
-		redirectUrlHandler(w, r, db)
+		log.Println("====== GET/{code} Request ======")
+		redirectUrlHandler(w, r, db, rdb, ctx)
 	})
-	err = http.ListenAndServe(":8080", router)
-	if err != nil {
+
+	// Serve the app
+	if err = http.ListenAndServe(":8080", router); err != nil {
 		log.Fatal("Failed to start server", err)
+		return
 	}
 }
 
-func greetHandler(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "static/index.html")
-}
-
-func shortenUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	// Read long URL from form-data
-	err := r.ParseForm()
-	if err != nil {
+// Handlers
+func shortenUrlHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+	db *sql.DB,
+	rdb *redis.Client,
+	ctx context.Context,
+) {
+	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
 	longUrl := strings.TrimSpace(r.FormValue("url"))
-
-	var id int64
-
-	err = db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longUrl).Scan(&id)
-
-	if errors.Is(err, sql.ErrNoRows) {
-		res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", longUrl)
-		if err != nil {
-			log.Println("Failed to insert url into db:", err)
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
-		id, _ = res.LastInsertId()
+	if longUrl == "" {
+		http.Error(w, "URL required", http.StatusBadRequest)
+		return
 	}
 
-	code := base62Encode(uint64(id))
-	shortUrl := fmt.Sprintf("http://localhost:8080/%s", code)
+	longKey := "long:" + longUrl
 
-	htmlSnippet := fmt.Sprintf(`
+	// Try Redis: longUrl → id
+	log.Println("Trying Redis")
+
+	if cachedID, err := rdb.Get(ctx, longKey).Result(); err == nil {
+		log.Println("Redis hit // Short URL found in cache")
+		id, _ := strconv.ParseInt(cachedID, 10, 64)
+		writeShortUrl(w, r, id)
+		return
+	}
+
+	// Redis miss -> Try SQLite
+	log.Println("Redis miss // Trying SQLite")
+
+	var id int64
+	if err := db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longUrl).Scan(&id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Println("SQLite miss // New URL --> Shorten + Persist to DB + Cache ")
+			res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", longUrl)
+			if err != nil {
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
+			id, _ = res.LastInsertId()
+		} else {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+	}
+	code := base62Encode(uint64(id))
+	shortKey := "short:" + code
+
+	// Cache both mappings to Redis
+	_ = rdb.Set(ctx, longKey, fmt.Sprintf("%d", id), 0).Err()
+	_ = rdb.Set(ctx, shortKey, longUrl, 0).Err()
+
+	writeShortUrl(w, r, id)
+}
+
+func redirectUrlHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+	db *sql.DB,
+	rdb *redis.Client,
+	ctx context.Context,
+) {
+	code := chi.URLParam(r, "code")
+
+	// Try Redis
+	log.Println("Trying Redis")
+
+	if longUrl, err := rdb.Get(ctx, "short:"+code).Result(); err == nil {
+		log.Println("Redis hit // Long URL found in cache")
+		http.Redirect(w, r, longUrl, http.StatusMovedPermanently)
+		return
+	}
+
+	// Redis miss -> Try SQLite
+	log.Println("Redis miss // Trying SQLite")
+
+	var longUrl string
+	id := base62Decode(code)
+	if err := db.QueryRow("SELECT long_url FROM urls WHERE id = ?", id).Scan(&longUrl); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Cache short code to Redis
+	_ = rdb.Set(ctx, "short:"+code, longUrl, 0).Err()
+
+	// Redirect to original url
+	http.Redirect(w, r, longUrl, http.StatusMovedPermanently)
+}
+
+// Helper functions
+func writeShortUrl(w http.ResponseWriter, r *http.Request, id int64) {
+	code := base62Encode(uint64(id))
+
+	protocol := r.Header.Get("X-Forwarded-Proto")
+	if r.TLS == nil {
+		protocol = "http"
+	}
+	shortUrl := fmt.Sprintf("%s://%s/%s", protocol, r.Host, code)
+
+	html := fmt.Sprintf(`
 		<div class="p-4 bg-green-100 text-green-800 rounded">
-			Short URL: 
+			Short URL:
 			<a href="%s" target="_blank" class="underline font-semibold">%s</a>
 		</div>
 	`, shortUrl, shortUrl)
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(htmlSnippet))
-}
-
-func redirectUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	code := chi.URLParam(r, "code")
-	id := base62Decode(code)
-	var longUrl string
-	err := db.QueryRow("SELECT long_url FROM urls WHERE id = ?", id).Scan(&longUrl)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	http.Redirect(w, r, longUrl, http.StatusMovedPermanently)
+	w.Write([]byte(html))
 }
 
 func base62Encode(num uint64) string {
