@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -38,6 +37,8 @@ func main() {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
 
+	router.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
+
 	router.Get("/", greetHandler)
 
 	router.Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
@@ -53,29 +54,26 @@ func main() {
 	}
 }
 
-func greetHandler(w http.ResponseWriter, _ *http.Request) {
-	w.Write([]byte("Hello from Go!\n"))
+func greetHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/index.html")
 }
 
 func shortenUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	var req struct {
-		Url string `json:"url"`
-	}
-
-	err := json.NewDecoder(r.Body).Decode(&req)
+	// Read long URL from form-data
+	err := r.ParseForm()
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	req.Url = strings.TrimSpace(req.Url)
+	longUrl := strings.TrimSpace(r.FormValue("url"))
 
 	var id int64
 
-	err = db.QueryRow("SELECT id FROM urls WHERE long_url = ?", req.Url).Scan(&id)
+	err = db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longUrl).Scan(&id)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", req.Url)
+		res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", longUrl)
 		if err != nil {
 			log.Println("Failed to insert url into db:", err)
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -87,11 +85,15 @@ func shortenUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	code := base62Encode(uint64(id))
 	shortUrl := fmt.Sprintf("http://localhost:8080/%s", code)
 
-	resp := map[string]string{"shortUrl": shortUrl}
+	htmlSnippet := fmt.Sprintf(`
+		<div class="p-4 bg-green-100 text-green-800 rounded">
+			Short URL: 
+			<a href="%s" target="_blank" class="underline font-semibold">%s</a>
+		</div>
+	`, shortUrl, shortUrl)
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(resp)
+	w.Write([]byte(htmlSnippet))
 }
 
 func redirectUrlHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
