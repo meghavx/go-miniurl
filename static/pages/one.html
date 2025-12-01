@@ -1,7 +1,9 @@
-<h1 class="text-2xl font-bold mb-4 text-center">Shorten a Link</h1>
+<h1 class="text-2xl font-bold mb-4 text-center">
+    Shorten a Link
+</h1>
 
-<form hx-post="/shorten-url" hx-target="#result" class="space-y-4">
-    <div class="space-y-2">
+<form hx-post="/shorten-url" hx-target="#main-content" class="space-y-4">
+    <div class="space-y-2 mb-2">
         <label class="block font-semibold text-gray-700">Long URL</label>
         <input
             name="url"
@@ -15,7 +17,7 @@
         >
     </div>
 
-    <button class="bg-blue-600 text-white font-medium p-3 w-full rounded hover:bg-blue-700">
+    <button class="bg-green-600 text-white font-medium p-3 w-full rounded hover:bg-green-700">
         Shorten Link
     </button>
 </form>

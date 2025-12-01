@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -178,15 +179,12 @@ func writeShortUrl(w http.ResponseWriter, r *http.Request, id int64) {
 	}
 	shortUrl := fmt.Sprintf("%s://%s/%s", protocol, r.Host, code)
 
-	html := fmt.Sprintf(`
-		<div class="p-4 bg-green-100 text-green-800 rounded">
-			Short URL:
-			<a href="%s" target="_blank" class="underline font-semibold">%s</a>
-		</div>
-	`, shortUrl, shortUrl)
-
+	// Load and render two.html
+	tmpl := template.Must(template.ParseFiles("static/pages/two.html"))
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(html))
+	tmpl.Execute(w, map[string]string{
+		"ShortURL": shortUrl,
+	})
 }
 
 func base62Encode(num uint64) string {
