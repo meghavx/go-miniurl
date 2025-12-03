@@ -1,25 +1,25 @@
-<h1 class="text-2xl font-bold mb-4 text-center">
-    Shorten a Link
-</h1>
-
 <form hx-post="/shorten-url" hx-target="#main-content" class="space-y-4">
     <div class="space-y-2 mb-2">
-        <label class="block font-semibold text-gray-700">Long URL</label>
-        <input
-            name="url"
-            type="url"
-            pattern="https?://.*"
-            placeholder="https://example.com/long-url"
-            class="border px-3 py-2 rounded w-full"
-            required
+        <!-- Label -->
+        <label class="block font-bold text-lg flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-100"
+                 fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 010 20a15.3 15.3 0 010-20" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Paste Your Long URL
+        </label>
+
+        <!-- Input: Long URL -->
+        <input name="url" type="url" pattern="https?://.*" placeholder="https://example.com/long-url" required
+            class="border px-3 py-2 rounded w-full placeholder-gray-500"
             oninvalid="this.setCustomValidity('Please enter a valid URL starting with http:// or https://')"
             oninput="this.setCustomValidity('')"
         >
     </div>
 
-    <button class="bg-green-600 text-white font-medium p-3 w-full rounded hover:bg-green-700">
+    <!-- Button: Shorten URL -->
+    <button class="bg-[#1A1A1A] text-[#FDF6EB] text-lg font-bold p-2 w-full rounded hover:bg-black">
         Shorten Link
     </button>
 </form>
-
-<div id="result" class="mt-6 text-lg text-center"></div>
