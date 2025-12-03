@@ -30,19 +30,19 @@
 
         <!-- Right Section -->
         <section id="right" class="relative w-1/2 flex bg-cover bg-center bg-[#1A1A1A] p-40">
-            <!-- Nav -->
-            <nav class="absolute top-4 right-6 flex gap-6 text-gray-300 text-xl">
-                <a href="#" class="nav-link hover:underline hover:text-white transition" hx-get="/static/pages/me.html" hx-target="#about-content">
-                    About Me
-                </a>
-                <a href="#" class="nav-link hover:underline hover:text-white transition" hx-get="/static/pages/project.html" hx-target="#about-content">
-                    Project
-                </a>
-            </nav>
+            <main id="about-content" class="justify-center items-center text-2xl text-gray-300">
+                About Project
+                </br><hr></br>
+                <pre class="text-base">
+Rate-Limited URL Shortener Service
 
-            <main id="about-content"
-                  class="justify-center items-center text-2xl text-gray-300"
-                  hx-get="/static/pages/project.html" hx-trigger="load">
+<b>Features:</b>
+  · Shorten a link
+  · Retrieve original link from a miniURL
+  · Track no. of clicks for a miniURL
+
+<b>GitHub Repo:</b> <a href="https://github.com/meghavx/go-mini-url" target="_blank" rel="noopener" class="underline">Link</a>
+                </pre>
             </main>
 
             <!-- Social Strip -->
@@ -80,38 +80,17 @@
                     </svg>
                 </a>
             </div>
-
         </section>
 
         <!-- Change left-section:bg-color when two.html loads -->
         <script>
             document.addEventListener("htmx:afterOnLoad", (evt) => {
                 const path = evt.detail.requestConfig?.path || "";
-
-                // 1) Change left-section color when two.html loads
                 if (path === "/shorten-url") {
                     document.getElementById("left").style.backgroundColor = "#26624F";
                 }
-
-                // 2) Navigation active state handler
-                const navMap = {
-                    "/static/pages/me.html": "About Me",
-                    "/static/pages/project.html": "Project",
-                };
-
-                const activeText = navMap[path];
-                if (!activeText) return;
-
-                const links = document.querySelectorAll(".nav-link");
-
-                links.forEach(link => link.classList.remove("text-white", "underline", "text-gray-300"));
-                links.forEach(link => link.classList.add("text-gray-300"));
-
-                const activeLink = [...links].find(l => l.textContent.trim() === activeText);
-                if (activeLink) activeLink.classList.add("text-white", "underline");
             });
         </script>
-
     </body>
 </html>
 
