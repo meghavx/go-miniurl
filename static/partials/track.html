@@ -1,1 +1,21 @@
-<h1>Track Clicks!</h1>
+<div class="w-full flex justify-center py-12 px-4">
+    <div class="w-full max-w-md bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+        <h2 class="text-2xl sm:text-3xl font-bold text-[#3163EA] mb-6 text-center">
+            Track Clicks
+        </h2>
+
+        <div class="space-y-4">
+            <label class="block text-sm font-semibold text-gray-700">Short URL
+            </label>
+            <input type="url" placeholder="https://example.com/long_url" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3163EA] focus:border-[#3163EA] outline-none text-sm sm:text-base"/>
+            <button class="w-full px-4 py-3 rounded-lg bg-[#0F1729] text-white font-semibold text-sm sm:text-base hover:opacity-90 transition">
+                Get Count
+            </button>
+        </div>
+
+        <div class="mt-8 flex items-center justify-center text-sm text-gray-600 hover:text-[#3163EA] cursor-pointer transition">
+            <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+            <span hx-get="/static/partials/home.html" hx-target="#main-content">Back to Main Menu</span>
+        </div>
+    </div>
+</div>

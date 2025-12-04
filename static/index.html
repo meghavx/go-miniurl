@@ -46,7 +46,11 @@
             <span class="text-xs sm:text-sm text-gray-500">© 2025 Megha Verma</span>
         </footer>
 
-        <script>lucide.createIcons();</script>
+        <script>
+            document.addEventListener("htmx:afterSwap", () => lucide.createIcons());
+            document.addEventListener("DOMContentLoaded", () => lucide.createIcons());
+        </script>
+
     </body>
 
 </html>
