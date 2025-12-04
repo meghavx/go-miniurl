@@ -1,0 +1,21 @@
+<div class="w-full flex flex-col items-center text-center py-12 px-4">
+    <h1 class="text-4xl sm:text-6xl md:text-8xl tracking-tight leading-tight">
+        <span class="text-[#0F1729]">Welcome to</span>
+        <span class="text-[#3163EA] tracking-tighter">Short.ly</span>
+    </h1>
+
+    <p class="mt-6 max-w-2xl text-sm sm:text-base md:text-lg text-gray-500 leading-relaxed">
+        A fast, lightweight URL shortener.
+    </p>
+
+    <div class="mt-10 flex flex-col items-center sm:flex-row gap-4 font-medium w-full max-w-xs sm:max-w-md">
+        <button class="w-[60%] md:w-full px-4 py-3 sm:py-4 rounded-lg bg-[#3163EA] text-white shadow-sm hover:opacity-90 transition text-sm sm:text-base"
+                hx-get="/static/partials/shorten.html" hx-target="#main-content">
+            Shorten a Link
+        </button>
+        <button class="w-[60%] md:w-full px-4 py-3 sm:py-4 rounded-lg bg-[#0F1729] text-white shadow-sm hover:opacity-90 transition text-sm sm:text-base"
+                hx-get="/static/partials/track.html" hx-target="#main-content">
+            Track Clicks
+        </button>
+    </div>
+</div>

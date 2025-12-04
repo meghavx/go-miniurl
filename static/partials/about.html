@@ -1,0 +1,77 @@
+<div class="w-full flex justify-center my-6 sm:my-10">
+    <div class="w-full max-w-5xl px-4 sm:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-sm sm:text-base leading-relaxed">
+
+            <div class="col">
+                <p>A fast, lightweight <b>URL shortener</b>.</p>
+
+                <br><hr><br>
+
+                <h2 class="text-base sm:text-lg font-semibold text-[#2463EB]">CORE FEATURES</h2>
+                <ol class="list-disc list-inside mt-2 space-y-1">
+                    <li>Short URL creation & URL redirection</li>
+                    <li>URL data persistence in database</li>
+                    <li>Collision-safe code generation</li>
+                </ol>
+
+                <br><hr><br>
+
+                <h2 class="text-base sm:text-lg font-semibold text-[#2463EB]">SYSTEM DESIGN ENHANCEMENTS</h2>
+                <ol class="list-disc list-inside mt-2 space-y-1">
+                    <li>
+                        <a href="https://redis.io/learn/howtos/solutions/microservices/caching"
+                           target="_blank" rel="noopener" class="hover:underline">
+                            Redis <b>caching</b>
+                        </a> for fast lookups</li>
+                    <li>
+                        <a href="https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/"
+                           target="_blank" rel="noopener" class="hover:underline">
+                            Bloom filter
+                        </a> to optimize duplicate checks
+                    </li>
+                    <li>Layered lookup: Bloom filter → Redis → DB</li>
+                    <li>
+                        <a href="https://redis.io/glossary/rate-limiting/"
+                           target="_blank" rel="noopener" class="hover:underline">
+                            Token-bucket <b>rate limiting</b>
+                        </a> (IP + global)</li>
+                    <li>
+                        <a href="https://redis.io/glossary/pub-sub/"
+                           target="_blank" rel="noopener" class="hover:underline">
+                            Redis Pub/Sub
+                        </a>for real-time click <b>analytics</b>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="col">
+                <h2 class="text-base sm:text-lg font-semibold text-[#2463EB]">TECH STACK</h2>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li><b>Backend:</b> Go</li>
+                    <li><b>Caching & Messaging:</b> Redis</li>
+                    <li><b>Database:</b> SQLite</li>
+                    <li><b>Frontend:</b> HTMX, TailwindCSS</li>
+                </ul>
+
+                <br><hr><br>
+
+                <h2 class="text-base sm:text-lg font-semibold text-[#2463EB]">SOURCE CODE</h2>
+                <p>
+                    <b>GitHub Link:</b>
+                    <a href="https://github.com/meghavx/short.ly" target="_blank" rel="noopener"
+                       class="text-gray-700 italic hover:underline">
+                        https://github.com/meghavx/short.ly
+                    </a>
+                </p>
+
+                <br><hr><br>
+
+                <h2 class="text-base sm:text-lg font-semibold text-[#2463EB]">PROJECT GOALS</h2>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li>Learn and use <b>Redis</b> in a practical, meaningful way</li>
+                    <li>Get comfortable with <b>Go</b> through hands-on learning</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
