@@ -8,20 +8,22 @@
         <link rel="icon" type="image/png" href="/static/icon.png" />
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        <script src="https://unpkg.com/lucide@latest"></script>
+        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     </head>
 
     <body class="h-screen flex flex-col justify-between bg-[#F7FAFC] text-gray-800">
-        <header class="w-full flex items-center justify-between p-3 sm:p-4 text-white border-b border-gray-200 bg-[#2463EB]">
-            <div class="flex items-center gap-2 cursor-default" hx-get="/static/partials/home.html" hx-target="#main-content">
+        <header class="w-full flex items-center justify-between p-4 text-white border-b border-gray-200 bg-[#2463EB]">
+            <div class="flex items-center gap-2 cursor-default">
                 <div class="w-6 h-6 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-[#F7FAFC]">
-                    <i data-lucide="link" class="w-3 h-3 sm:w-6 sm:h-6 text-[#2463EB]" style="stroke-width:2.5;"></i>
+                    <i data-lucide="link" class="w-3 h-3 sm:w-5 sm:h-5 text-[#2463EB]" style="stroke-width:2.5;"></i>
                 </div>
-                <span class="text-lg sm:text-2xl tracking-tight">Short.ly</span>
+                <span class="text-lg sm:text-2xl font-light cursor-pointer" hx-get="/static/partials/home.html" hx-target="#main-content">
+                    Short.ly
+                </span>
             </div>
-            <nav class="flex gap-4 sm:gap-6 text-sm sm:text-lg transition">
-                <a hx-get="/static/partials/home.html" hx-target="#main-content" class="cursor-pointer hover:underline">Home</a>
-                <a hx-get="/static/partials/about.html" hx-target="#main-content" class="cursor-pointer hover:underline">About</a>
+            <nav class="flex gap-4 sm:gap-6 text-sm sm:text-base">
+                <a hx-get="/static/partials/home.html" hx-target="#main-content" class="cursor-pointer">Home</a>
+                <a hx-get="/static/partials/about.html" hx-target="#main-content" class="cursor-pointer">About</a>
             </nav>
         </header>
 
@@ -31,24 +33,28 @@
               hx-trigger="load">
         </main>
 
-        <footer class="w-full py-2 border-t bg-white text-center">
-            <div class="flex items-center justify-center gap-5 m-2 text-gray-600">
-                <a href="mailto:meghaverma.pi@gmail.com" class="hover:text-[#2463EB]">
-                    <i data-lucide="mail" class="w-4 h-4"></i>
-                </a>
-                <a href="https://www.linkedin.com/in/meghaaverma" target="_blank" class="hover:text-[#2463EB]">
+        <footer class="flex flex-col gap-4 w-full py-4 sm:py-6 border-t bg-white text-center">
+            <div class="flex items-center justify-center gap-3 text-gray-600">
+                <a href="https://www.linkedin.com/in/meghaaverma" target="_blank">
                     <i data-lucide="linkedin" class="w-4 h-4"></i>
                 </a>
-                <a href="https://github.com/meghavx" target="_blank" class="hover:text-[#2463EB]">
+                <a href="mailto:meghaverma.pi@gmail.com">
+                    <i data-lucide="mail" class="w-4 h-4"></i>
+                </a>
+                <a href="https://github.com/meghavx" target="_blank">
                     <i data-lucide="github" class="w-4 h-4"></i>
                 </a>
             </div>
-            <span class="text-xs sm:text-sm text-gray-500">© 2025 Megha Verma</span>
+            <div class="text-xs text-gray-500">© 2025 Megha Verma</div>
         </footer>
 
         <script>
-            document.addEventListener("htmx:afterSwap", () => lucide.createIcons());
-            document.addEventListener("DOMContentLoaded", () => lucide.createIcons());
+            function initLucide() {
+                if (window.lucide) lucide.createIcons();
+            }
+            document.addEventListener("DOMContentLoaded", initLucide);
+            window.addEventListener("load", initLucide);
+            document.addEventListener("htmx:afterSwap", initLucide);
         </script>
 
     </body>
