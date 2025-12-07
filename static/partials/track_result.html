@@ -1,0 +1,20 @@
+<h2 class="text-2xl sm:text-4xl font-semibold text-[#3163EA] text-center">
+    Click Stats
+</h2>
+
+<div class="space-y-4">
+    <label class="block flex items-center gap-2 text-sm font-semibold text-gray-700 -mb-2">
+        <i data-lucide="link" class="w-4 h-4"></i>
+        Total Clicks
+    </label>
+
+    <div class="flex">
+        <input id="short-url" type="text" value="{{.TotalClicks}}" readonly
+               class="flex-1 border border-gray-300 rounded-l-md px-3 py-2 bg-gray-200 text-gray-800">
+    </div>
+
+    <button hx-get="/static/partials/track.html" hx-target="#main-content"
+            class="w-full p-3 rounded-lg bg-[#3163EA] text-white font-medium text-sm sm:text-base hover:opacity-90 transition">
+        Track Clicks for Another Link
+    </button>
+</div>

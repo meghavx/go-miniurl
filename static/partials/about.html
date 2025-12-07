@@ -1,4 +1,4 @@
-<div class="w-full flex justify-center my-6 sm:my-10">
+<div class="w-full flex flex-col items-center justify-between">
     <div class="w-full max-w-5xl px-4 sm:px-8">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-10 text-sm sm:text-base leading-relaxed">
 
@@ -73,5 +73,10 @@
                 </ul>
             </div>
         </div>
+    </div>
+
+    <div class="flex items-center justify-center my-16 sm:mt-12 sm:-mb-12 text-sm text-gray-600 hover:text-[#3163EA] cursor-pointer transition">
+        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+        <span hx-get="/static/partials/home.html" hx-target="#main-content">Back to Home</span>
     </div>
 </div>

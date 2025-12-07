@@ -1,0 +1,45 @@
+<h2 class="text-2xl sm:text-4xl font-semibold text-[#3163EA] text-center">
+    Shortened Link
+</h2>
+
+<div class="space-y-4">
+    <label class="block flex items-center gap-2 text-sm font-semibold text-gray-700 -mb-2">
+        <i data-lucide="link" class="w-4 h-4"></i>
+        Short URL
+    </label>
+
+    <div class="flex">
+        <input id="short-url" type="text" value="{{.ShortURL}}" readonly
+               class="flex-1 border border-gray-300 rounded-l-md px-3 py-2 bg-gray-200 text-gray-800">
+
+        <div class="inline-flex items-stretch border border-l-0 border-gray-300 bg-gray-200 rounded-r-md overflow-hidden">
+            <!-- Copy Button -->
+            <button title="Copy Link" data-copy-target="short-url"
+                 class="flex items-center justify-center px-3 py-2 hover:bg-gray-300 transition"
+                 hx-on:click="
+                    navigator.clipboard.writeText('{{.ShortURL | js}}');
+                    this.querySelector('.copy-icon').classList.add('hidden');
+                    this.querySelector('.copied-icon').classList.remove('hidden');
+                    setTimeout(() => {
+                        this.querySelector('.copy-icon').classList.remove('hidden');
+                        this.querySelector('.copied-icon').classList.add('hidden');
+                    }, 2000);
+                "
+            >
+                <i data-lucide="copy" class="copy-icon w-5 h-5 text-gray-500"></i>
+                <i data-lucide="copy-check" class="copied-icon w-5 h-5 text-[#3163EA] hidden"></i>
+            </button>
+
+            <!-- Visit Icon -->
+            <a href="{{.ShortURL}}" target="_blank" rel="noopener" title="Visit Link"
+               class="flex items-center justify-center text-gray-600 px-3 py-2 hover:bg-gray-300 transition">
+                <i data-lucide="square-arrow-out-up-right" class="w-4 h-4"></i>
+            </a>
+        </div>
+    </div>
+
+    <button hx-get="/static/partials/shorten.html" hx-target="#main-content"
+            class="w-full p-3 rounded-lg bg-[#3163EA] text-white font-medium text-sm sm:text-base hover:opacity-90 transition">
+        Shorten Another Link
+    </button>
+</div>

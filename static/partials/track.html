@@ -1,25 +1,27 @@
 <div class="w-full flex flex-col items-center py-16 px-4 -mt-16">
-
-    <div class="flex flex-col gap-10 justify-evenly w-full max-w-md bg-white rounded-xl p-10 shadow-sm border border-gray-200">
+    <div id="track-clicks-div" class="flex flex-col gap-10 justify-evenly w-full max-w-md bg-white rounded-xl p-10 shadow-sm border border-gray-200">
         <h2 class="text-2xl sm:text-4xl font-semibold text-[#3163EA] text-center">
             Track Clicks
         </h2>
 
-        <div class="space-y-4">
-            <label class="block text-sm font-semibold text-gray-700 -mb-2">Short URL</label>
-            <input type="url" placeholder="https://example.com/long_url"
-                   class="w-full p-2 rounded-lg border border-gray-300
-                       focus:ring-2 focus:ring-[#3163EA] focus:border-[#3163EA]
-                       outline-none text-sm sm:text-base"/>
+        <!-- <form hx-post="/track-clicks" hx-target="#track-clicks-div" class="space-y-4"> -->
+        <form class="space-y-4">
+            <label class="block flex items-center gap-2 text-sm font-semibold text-gray-700 -mb-2">
+                <i data-lucide="link" class="w-4 h-4"></i>
+                <span>Short URL</span>
+            </label>
+            <input name="url" type="url" pattern="https?://.*" placeholder="Enter your short URL here" required
+                   class="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#3163EA] focus:border-[#3163EA] outline-none text-sm sm:text-base"
+                   oninvalid="this.setCustomValidity('Please enter a valid URL starting with http:// or https://')"
+                   oninput="this.setCustomValidity('')"/>
             <button class="w-full p-3 rounded-lg bg-[#0F1729] text-white font-medium text-sm sm:text-base hover:opacity-90 transition">
                 Get Count
             </button>
-        </div>
+        </form>
     </div>
 
     <div class="mt-6 flex items-center justify-center text-sm text-gray-600 hover:text-[#3163EA] cursor-pointer transition">
         <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
-        <span hx-get="/static/partials/home.html" hx-target="#main-content">Back to Main Menu</span>
+        <span hx-get="/static/partials/home.html" hx-target="#main-content">Back to Home</span>
     </div>
-
 </div>
