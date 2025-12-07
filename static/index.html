@@ -49,12 +49,22 @@
         </footer>
 
         <script>
-            function initLucide() {
-                if (window.lucide) lucide.createIcons();
-            }
-            document.addEventListener("DOMContentLoaded", initLucide);
-            window.addEventListener("load", initLucide);
-            document.addEventListener("htmx:afterSwap", initLucide);
+            document.body.addEventListener("htmx:responseError", evt => {
+                const toast = document.getElementById("toast");
+                document.getElementById("toast-text").textContent =
+                    evt.detail.xhr.responseText || "Something went wrong";
+
+                toast.classList.remove("hidden");
+                requestAnimationFrame(() => toast.classList.add("opacity-100"));
+
+                setTimeout(() => toast.classList.remove("opacity-100"), 4000);
+                setTimeout(() => toast.classList.add("hidden"), 4500);
+            });
+
+            const initLucide = () => window.lucide?.createIcons();
+            ["DOMContentLoaded", "load", "htmx:afterSwap"].forEach(e =>
+                document.addEventListener(e, initLucide)
+            );
         </script>
 
     </body>

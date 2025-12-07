@@ -29,6 +29,11 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		return
 	}
 
+	if !utils.IsValidURL(longURL) {
+		http.Error(w, "Invalid or unsafe URL", http.StatusBadRequest)
+		return
+	}
+
 	var id int64
 	longKey := "long_to_id:" + longURL
 
