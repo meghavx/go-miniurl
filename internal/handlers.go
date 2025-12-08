@@ -98,6 +98,48 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
 }
 
+func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
+	ctx := r.Context()
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	shortURL := strings.TrimSpace(r.FormValue("url"))
+	if shortURL == "" {
+		http.Error(w, "URL required", http.StatusBadRequest)
+		return
+	}
+
+	code, err := utils.ExtractShortCode(shortURL)
+	if err != nil {
+		http.Error(w, "Invalid short URL", http.StatusBadRequest)
+		return
+	}
+
+	var longURL string
+	key := "code_to_long:" + code
+
+	// Try Redis
+	if longURL, err := rdb.Get(ctx, key).Result(); err == nil {
+		writeLongURL(w, longURL)
+		return
+	}
+
+	// Try SQLite
+	id := utils.Base62Decode(code)
+	if db.QueryRowContext(ctx, "SELECT long_url FROM urls WHERE id = ?", id).Scan(&longURL) != nil {
+		http.NotFound(w, r)
+		return
+	}
+	fmt.Println("SQLite miss")
+	fmt.Println("LongURL:", longURL)
+
+	// Write response to html template
+	writeLongURL(w, longURL)
+}
+
 func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 	protocol := "https"
 	if r.TLS == nil {
@@ -108,5 +150,13 @@ func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 	w.WriteHeader(http.StatusCreated)
 	_ = tmpl.Execute(w, map[string]string{
 		"ShortURL": shortURL,
+	})
+}
+
+func writeLongURL(w http.ResponseWriter, longURL string) {
+	tmpl := template.Must(template.ParseFiles("static/partials/preview_result.html"))
+	w.WriteHeader(http.StatusCreated)
+	_ = tmpl.Execute(w, map[string]string{
+		"LongURL": longURL,
 	})
 }

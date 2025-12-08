@@ -34,5 +34,10 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 		RedirectURL(w, r, code, db, rdb)
 	})
 
+	// preview
+	router.Post("/preview-url", func(w http.ResponseWriter, r *http.Request) {
+		PreviewURL(w, r, db, rdb)
+	})
+
 	return router
 }

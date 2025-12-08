@@ -3,6 +3,7 @@ package utils
 import (
 	"net"
 	"net/url"
+	"strings"
 )
 
 // IsValidURL performs basic safety and format validation to
@@ -40,4 +41,12 @@ func IsValidURL(raw string) bool {
 
 	// All checks passed → URL seems valid and safe
 	return true
+}
+
+func ExtractShortCode(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimPrefix(u.Path, "/"), nil
 }
