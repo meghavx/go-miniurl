@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
+	"url-shortener/internal/bloom"
 	"url-shortener/internal/utils"
 )
 
@@ -23,37 +25,48 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	if !provided {
 		return
 	}
+
 	if !utils.IsValidURL(longURL) {
 		http.Error(w, "Invalid or unsafe URL", http.StatusBadRequest)
 		return
 	}
 
-	// Try Redis
-	longKey := "long_to_id:" + longURL
-	if cachedID, err := rdb.Get(ctx, longKey).Result(); err == nil {
-		id, _ = strconv.ParseInt(cachedID, 10, 64)
-		code := utils.Base62Encode(uint64(id))
-		writeShortURL(w, r, code)
-		return
+	if bloom.MightExist(longURL) {
+		// Try Redis
+		longKey := "long_to_id:" + utils.HashURL(longURL)
+		if cachedID, err := rdb.Get(ctx, longKey).Result(); err == nil {
+			id, _ = strconv.ParseInt(cachedID, 10, 64)
+			writeShortURL(w, r, id)
+			return
+		}
+
+		// Redis miss -> Try SQLite
+		err := db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longURL).Scan(&id)
+		if err == nil {
+			writeShortURL(w, r, id)
+			return
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
 	}
 
-	// Redis miss -> Try SQLite
-	if err := db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longURL).Scan(&id); err == nil && id > 0 {
-		code := utils.Base62Encode(uint64(id))
-		writeShortURL(w, r, code)
-		return
-	}
-
-	// SQLite miss ~ New URL -> Insert in DB
-	if res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", longURL); err == nil {
-		id, _ = res.LastInsertId()
-		code := utils.Base62Encode(uint64(id))
-		storeInRedis(rdb, ctx, code, longURL, &id)
-		writeShortURL(w, r, code)
-	} else {
+	// Definitely a NEW URL -> Insert in DB
+	res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", longURL)
+	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
+
+	id, _ = res.LastInsertId()
+	code := utils.Base62Encode(uint64(id))
+
+	// Store in Bloom and Redis
+	bloom.Add(longURL)
+	storeInRedis(rdb, ctx, code, longURL, &id)
+
+	writeShortURL(w, r, id)
 }
 
 func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB, rdb *redis.Client) {
@@ -122,12 +135,13 @@ func storeInRedis(rdb *redis.Client, ctx context.Context, code string, longURL s
 
 	// Store longURL -> id mapping
 	if id != nil {
-		longKey := "long_to_id:" + longURL
+		longKey := "long_to_id:" + utils.HashURL(longURL)
 		_ = rdb.Set(ctx, longKey, fmt.Sprint(id), ttl).Err()
 	}
 }
 
-func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
+func writeShortURL(w http.ResponseWriter, r *http.Request, id int64) {
+	code := utils.Base62Encode(uint64(id))
 	protocol := "https"
 	if r.TLS == nil {
 		protocol = "http"
