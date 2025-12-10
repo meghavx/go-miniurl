@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"net/http"
 	"time"
-	"url-shortener/internal/middleware/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/redis/go-redis/v9"
+
+	"url-shortener/internal/middleware/ratelimit"
 )
 
 func New(db *sql.DB, rdb *redis.Client) http.Handler {
@@ -30,9 +31,10 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 		sub.Use(ratelimit.Global(rdb, 50, time.Minute))
 
 		// shorten url
-		sub.Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
-			ShortenURL(w, r, db, rdb)
-		})
+		sub.With(ratelimit.PerIP(rdb, 10, time.Minute)).
+			Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
+				ShortenURL(w, r, db, rdb)
+			})
 
 		// redirect
 		sub.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
