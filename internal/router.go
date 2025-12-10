@@ -3,6 +3,8 @@ package internal
 import (
 	"database/sql"
 	"net/http"
+	"time"
+	"url-shortener/internal/middleware/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -23,20 +25,25 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 		http.ServeFile(w, r, "static/index.html")
 	})
 
-	// shorten url
-	router.Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
-		ShortenURL(w, r, db, rdb)
-	})
+	// ---------------- RATE LIMITED GROUP -----------------
+	router.Group(func(sub chi.Router) {
+		sub.Use(ratelimit.Global(rdb, 50, time.Minute))
 
-	// redirect
-	router.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
-		code := chi.URLParam(r, "code")
-		RedirectURL(w, r, code, db, rdb)
-	})
+		// shorten url
+		sub.Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
+			ShortenURL(w, r, db, rdb)
+		})
 
-	// preview
-	router.Post("/preview-url", func(w http.ResponseWriter, r *http.Request) {
-		PreviewURL(w, r, db, rdb)
+		// redirect
+		sub.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
+			code := chi.URLParam(r, "code")
+			RedirectURL(w, r, code, db, rdb)
+		})
+
+		// preview
+		sub.Post("/preview-url", func(w http.ResponseWriter, r *http.Request) {
+			PreviewURL(w, r, db, rdb)
+		})
 	})
 
 	return router
