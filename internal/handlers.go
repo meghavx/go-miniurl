@@ -21,8 +21,8 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	ctx := r.Context()
 	var id int64
 
-	// Validate request
-	longURL, err := validateRequest(r, utils.ValidateURL)
+	// Validate request and get long URL
+	longURL, err := validateShortenRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -65,7 +65,6 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	// Store in Bloom and Redis
 	bloom.Add(longURL)
 	storeShortAndLongKeysInRedis(rdb, ctx, code, longURL, id)
-
 	writeShortURL(w, r, code)
 }
 
@@ -78,14 +77,10 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 }
 
 func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
-	shortURL, err := ParseAndGetURL(r)
+	// Validate request and get short code
+	code, err := validatePreviewRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	code, err := utils.ExtractShortCode(shortURL)
-	if err != nil {
-		http.Error(w, "Invalid short URL", http.StatusBadRequest)
 		return
 	}
 	if longURL := retrieveLongURL(w, r, db, rdb, code); longURL != "" {
@@ -97,17 +92,32 @@ func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 
 /**** Helper Methods below ****/
 
-func validateRequest(r *http.Request, validationFunc func(string) error) (string, error) {
+func validateShortenRequest(r *http.Request) (string, error) {
 	// Parse URL
-	longURL, err := ParseAndGetURL(r)
+	url, err := ParseAndGetURL(r)
 	if err != nil {
 		return "", err
 	}
 	// Validate URL
-	if err = validationFunc(longURL); err != nil {
+	url, err = utils.ValidateLongURL(url)
+	if err != nil {
+		return url, err
+	}
+	return url, nil
+}
+
+func validatePreviewRequest(r *http.Request) (string, error) {
+	// Parse URL
+	url, err := ParseAndGetURL(r)
+	if err != nil {
 		return "", err
 	}
-	return longURL, nil
+	// Validate URL
+	code, err := utils.ValidateShortURL(url, r.Host)
+	if err != nil {
+		return code, err
+	}
+	return code, nil
 }
 
 func ParseAndGetURL(r *http.Request) (string, error) {
