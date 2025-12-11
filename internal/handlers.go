@@ -21,13 +21,10 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	ctx := r.Context()
 	var id int64
 
-	longURL := ParseAndGetURL(w, r)
-	if longURL == "" {
-		return
-	}
-
-	if !utils.IsValidURL(longURL) {
-		http.Error(w, "Invalid or unsafe URL", http.StatusBadRequest)
+	// Validate request
+	longURL, err := validateRequest(r, utils.ValidateURL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -81,8 +78,9 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 }
 
 func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
-	shortURL := ParseAndGetURL(w, r)
-	if shortURL == "" {
+	shortURL, err := ParseAndGetURL(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	code, err := utils.ExtractShortCode(shortURL)
@@ -99,17 +97,28 @@ func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 
 /**** Helper Methods below ****/
 
-func ParseAndGetURL(w http.ResponseWriter, r *http.Request) string {
+func validateRequest(r *http.Request, validationFunc func(string) error) (string, error) {
+	// Parse URL
+	longURL, err := ParseAndGetURL(r)
+	if err != nil {
+		return "", err
+	}
+	// Validate URL
+	if err = validationFunc(longURL); err != nil {
+		return "", err
+	}
+	return longURL, nil
+}
+
+func ParseAndGetURL(r *http.Request) (string, error) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return ""
+		return "", errors.New("Bad Request")
 	}
 	url := strings.TrimSpace(r.FormValue("url"))
 	if url == "" {
-		http.Error(w, "URL required", http.StatusBadRequest)
-		return ""
+		return "", errors.New("URL required")
 	}
-	return url
+	return url, nil
 }
 
 func retrieveLongURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client, code string) string {
