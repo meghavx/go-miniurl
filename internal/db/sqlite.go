@@ -16,7 +16,9 @@ func InitSQLite() *sql.DB {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS urls (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			long_url TEXT NOT NULL UNIQUE
+			long_url TEXT NOT NULL UNIQUE,
+			click_count INTEGER DEFAULT 0,
+			last_visited_at DATETIME
 		);
 	`)
 
