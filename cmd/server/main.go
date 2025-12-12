@@ -6,9 +6,9 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	router "url-shortener/internal"
 	"url-shortener/internal/bloom"
 	"url-shortener/internal/db"
+	router "url-shortener/internal/http"
 )
 
 func main() {
