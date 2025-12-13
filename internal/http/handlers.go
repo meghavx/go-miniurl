@@ -42,7 +42,7 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		err := db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longURL).Scan(&id)
 		if err == nil {
 			code := utils.Base62Encode(uint64(id))
-			storeShortAndLongKeysInRedis(rdb, ctx, code, longURL, id)
+			storeShortAndLongKeysInRedis(ctx, rdb, code, longURL, id)
 			writeShortURL(w, r, code)
 			return
 		}
@@ -64,30 +64,36 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 
 	// Store in Bloom and Redis
 	bloom.Add(longURL)
-	storeShortAndLongKeysInRedis(rdb, ctx, code, longURL, id)
+	storeShortAndLongKeysInRedis(ctx, rdb, code, longURL, id)
 	writeShortURL(w, r, code)
 }
 
 func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB, rdb *redis.Client) {
-	if longURL := retrieveLongURL(w, r, db, rdb, code); longURL != "" {
-		ctx := r.Context()
-		storeShortKeyInRedis(rdb, ctx, code, longURL)
-		http.Redirect(w, r, longURL, http.StatusMovedPermanently)
+	ctx := r.Context()
+
+	_, longURL := retrieveLongURL(ctx, db, rdb, code)
+	if longURL == "" {
+		http.Error(w, "Webpage not found!", http.StatusNotFound)
+		return
 	}
+	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
 }
 
 func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
+	ctx := r.Context()
+
 	// Validate request and get short code
 	code, err := validatePreviewRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if longURL := retrieveLongURL(w, r, db, rdb, code); longURL != "" {
-		ctx := r.Context()
-		storeShortKeyInRedis(rdb, ctx, code, longURL)
-		writeURLToTemplate(w, "LongURL", longURL, "preview_result.html")
+	_, longURL := retrieveLongURL(ctx, db, rdb, code)
+	if longURL == "" {
+		http.Error(w, "Webpage not found!", http.StatusNotFound)
+		return
 	}
+	writeURLToTemplate(w, "LongURL", longURL, "preview_result.html")
 }
 
 /**** Helper Methods below ****/
@@ -131,28 +137,26 @@ func ParseAndGetURL(r *http.Request) (string, error) {
 	return url, nil
 }
 
-func retrieveLongURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client, code string) string {
-	ctx := r.Context()
+func retrieveLongURL(ctx context.Context, db *sql.DB, rdb *redis.Client, code string) (uint64, string) {
+	id := utils.Base62Decode(code)
 	var longURL string
 
 	// Try Redis
 	key := "code_to_long:" + code
 	if longURL, err := rdb.Get(ctx, key).Result(); err == nil {
-		return longURL
+		return id, longURL
 	}
-
 	// Redis miss -> Try SQLite
-	id := utils.Base62Decode(code)
 	if db.QueryRowContext(ctx, "SELECT long_url FROM urls WHERE id = ?", id).Scan(&longURL) != nil {
-		http.NotFound(w, r)
-		return ""
+		return 0, ""
 	}
-	return longURL
+	storeShortKeyInRedis(ctx, rdb, code, longURL)
+	return id, longURL
 }
 
-func storeShortAndLongKeysInRedis(rdb *redis.Client, ctx context.Context, code string, longURL string, id int64) {
+func storeShortAndLongKeysInRedis(ctx context.Context, rdb *redis.Client, code string, longURL string, id int64) {
 	// Store code -> longURL mapping
-	storeShortKeyInRedis(rdb, ctx, code, longURL)
+	storeShortKeyInRedis(ctx, rdb, code, longURL)
 
 	hashedURL := utils.HashURL(longURL)
 	longKey := "long_to_id:" + hashedURL
@@ -162,7 +166,7 @@ func storeShortAndLongKeysInRedis(rdb *redis.Client, ctx context.Context, code s
 	_ = rdb.Set(ctx, longKey, fmt.Sprint(id), ttl).Err()
 }
 
-func storeShortKeyInRedis(rdb *redis.Client, ctx context.Context, code string, longURL string) {
+func storeShortKeyInRedis(ctx context.Context, rdb *redis.Client, code string, longURL string) {
 	ttl := 24 * time.Hour
 	shortKey := "code_to_long:" + code
 	_ = rdb.Set(ctx, shortKey, longURL, ttl).Err()
