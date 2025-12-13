@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"url-shortener/internal/analytics"
 
 	"github.com/redis/go-redis/v9"
 
@@ -71,12 +72,16 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB, rdb *redis.Client) {
 	ctx := r.Context()
 
-	_, longURL := retrieveLongURL(ctx, db, rdb, code)
+	id, longURL := retrieveLongURL(ctx, db, rdb, code)
 	if longURL == "" {
 		http.Error(w, "Webpage not found!", http.StatusNotFound)
 		return
 	}
-	http.Redirect(w, r, longURL, http.StatusMovedPermanently)
+
+	// Publish click event
+	analytics.PublishClickEvent(rdb, id)
+
+	http.Redirect(w, r, longURL, http.StatusFound)
 }
 
 func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {

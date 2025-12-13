@@ -1,4 +1,4 @@
 .idea/
-urls.db
 *.db
+*.rdb
 .DS_Store

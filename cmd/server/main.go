@@ -23,6 +23,8 @@ func main() {
 
 	r := router.New(sqlite, rdb)
 
-	log.Println("Server started on localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	port := ":8080"
+
+	log.Printf("Server started on localhost%s\n", port)
+	log.Fatal(http.ListenAndServe(port, r))
 }
