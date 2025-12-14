@@ -10,10 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"url-shortener/internal/analytics"
 
 	"github.com/redis/go-redis/v9"
 
+	//"url-shortener/internal/analytics"
 	"url-shortener/internal/bloom"
 	"url-shortener/internal/utils"
 )
@@ -78,8 +78,18 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 		return
 	}
 
-	// Publish click event
-	analytics.PublishClickEvent(rdb, id)
+	/* // Publish click event
+	analytics.PublishClickEvent(rdb, id) */
+
+	// Update DB with click count
+	ts := time.Now().UTC().Format(time.RFC3339)
+	if _, err := db.ExecContext(ctx, `
+		UPDATE urls
+		SET click_count = COALESCE(click_count, 0) + 1, last_visited_at = ?
+		WHERE id = ?`,
+		ts, id); err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+	}
 
 	http.Redirect(w, r, longURL, http.StatusFound)
 }
