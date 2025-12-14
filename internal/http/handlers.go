@@ -74,7 +74,7 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 
 	id, longURL := retrieveLongURL(ctx, db, rdb, code)
 	if longURL == "" {
-		http.Error(w, "Webpage not found!", http.StatusNotFound)
+		http.Error(w, "Link not found!", http.StatusNotFound)
 		return
 	}
 
@@ -95,10 +95,30 @@ func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	}
 	_, longURL := retrieveLongURL(ctx, db, rdb, code)
 	if longURL == "" {
-		http.Error(w, "Webpage not found!", http.StatusNotFound)
+		http.Error(w, "Link not found!", http.StatusNotFound)
 		return
 	}
-	writeURLToTemplate(w, "LongURL", longURL, "preview_result.html")
+	respJSON := map[string]string{
+		"LongURL": longURL,
+	}
+	writeRespToTemplate(w, respJSON, "preview_result.html")
+}
+
+func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
+	ctx := r.Context()
+
+	// Validate request and get short code
+	code, err := validatePreviewRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	id := utils.Base62Decode(code)
+	respJSON := retrieveClickStats(w, ctx, db, id)
+	if respJSON == nil {
+		return
+	}
+	writeRespToTemplate(w, respJSON, "track_result.html")
 }
 
 /**** Helper Methods below ****/
@@ -159,6 +179,34 @@ func retrieveLongURL(ctx context.Context, db *sql.DB, rdb *redis.Client, code st
 	return id, longURL
 }
 
+func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) map[string]string {
+	var (
+		longURL     string
+		clickCount  int
+		lastVisited sql.NullTime
+	)
+	err := db.QueryRowContext(ctx, "SELECT long_url, click_count, last_visited_at FROM urls WHERE id = ?", id).
+		Scan(&longURL, &clickCount, &lastVisited)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "Link not found!", http.StatusNotFound)
+			return nil
+		} else {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return nil
+		}
+	}
+	clickStats := map[string]string{
+		"LongURL":     longURL,
+		"TotalClicks": fmt.Sprintf("%d", clickCount),
+		"LastVisited": "Never", // fallback value
+	}
+	if lastVisited.Valid {
+		clickStats["LastVisited"] = lastVisited.Time.UTC().Format(time.RFC3339)
+	}
+	return clickStats
+}
+
 func storeShortAndLongKeysInRedis(ctx context.Context, rdb *redis.Client, code string, longURL string, id int64) {
 	// Store code -> longURL mapping
 	storeShortKeyInRedis(ctx, rdb, code, longURL)
@@ -183,13 +231,14 @@ func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 		protocol = "http"
 	}
 	shortURL := fmt.Sprintf("%s://%s/%s", protocol, r.Host, code)
-	writeURLToTemplate(w, "ShortURL", shortURL, "shorten_result.html")
+	respJSON := map[string]string{
+		"ShortURL": shortURL,
+	}
+	writeRespToTemplate(w, respJSON, "shorten_result.html")
 }
 
-func writeURLToTemplate(w http.ResponseWriter, key string, val string, tmplName string) {
+func writeRespToTemplate(w http.ResponseWriter, respJSON map[string]string, tmplName string) {
 	tmpl := template.Must(template.ParseFiles("static/partials/" + tmplName))
 	w.WriteHeader(http.StatusCreated)
-	_ = tmpl.Execute(w, map[string]string{
-		key: val,
-	})
+	_ = tmpl.Execute(w, respJSON)
 }

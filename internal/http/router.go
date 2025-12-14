@@ -36,6 +36,11 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 				ShortenURL(w, r, db, rdb)
 			})
 
+		// track clicks
+		sub.Post("/track-clicks", func(w http.ResponseWriter, r *http.Request) {
+			TrackClicks(w, r, db, rdb)
+		})
+
 		// redirect
 		sub.Get("/{code}", func(w http.ResponseWriter, r *http.Request) {
 			code := chi.URLParam(r, "code")
