@@ -49,21 +49,37 @@
         </footer>
 
         <script>
+            // Show a toast notification when any HTMX request returns a (4xx / 5xx) error
             document.body.addEventListener("htmx:responseError", evt => {
                 const toast = document.getElementById("toast");
                 document.getElementById("toast-text").textContent =
                     evt.detail.xhr.responseText || "Something went wrong";
-
                 toast.classList.remove("hidden");
                 requestAnimationFrame(() => toast.classList.add("opacity-100"));
-
                 setTimeout(() => toast.classList.remove("opacity-100"), 4000);
                 setTimeout(() => toast.classList.add("hidden"), 4500);
             });
 
+            // Convert UTC timestamps rendered by the backend into the user's local time
+            const convertUTCToLocal = () => {
+                const elem = document.getElementById("last-visited");
+                if (!elem) return;
+                const date = new Date(elem.dataset.utc);
+                elem.textContent = isNaN(date.getTime())
+                    ? "Never"
+                    : date.toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short"
+                    });
+            };
+
+            // Re-initialize Lucide icons after DOM changes (initial load or HTMX swaps)
             const initLucide = () => window.lucide?.createIcons();
             ["DOMContentLoaded", "load", "htmx:afterSwap"].forEach(e =>
-                document.addEventListener(e, initLucide)
+                document.addEventListener(e, () => {
+                    initLucide();
+                    convertUTCToLocal();
+                })
             );
         </script>
 
