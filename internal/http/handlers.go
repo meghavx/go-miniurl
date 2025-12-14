@@ -104,7 +104,7 @@ func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	writeRespToTemplate(w, respJSON, "preview_result.html")
 }
 
-func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
+func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	ctx := r.Context()
 
 	// Validate request and get short code

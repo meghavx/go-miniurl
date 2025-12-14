@@ -38,7 +38,7 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 
 		// track clicks
 		sub.Post("/track-clicks", func(w http.ResponseWriter, r *http.Request) {
-			TrackClicks(w, r, db, rdb)
+			TrackClicks(w, r, db)
 		})
 
 		// redirect
