@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -98,10 +97,17 @@ func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		http.Error(w, "Link not found!", http.StatusNotFound)
 		return
 	}
-	respJSON := map[string]string{
-		"LongURL": longURL,
-	}
-	writeRespToTemplate(w, respJSON, "preview_result.html")
+
+	// Write Response
+	htmlSnippet := fmt.Sprintf(`
+		<div class="p-4 bg-green-100 text-green-700 rounded">
+			<p class="mb-1 font-bold">Original URL:</p>
+			<a href="%s" target="_blank" class="underline font-medium">%s</a>
+		</div>
+	`, longURL, longURL)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(htmlSnippet))
 }
 
 func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -114,11 +120,28 @@ func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 	id := utils.Base62Decode(code)
-	respJSON := retrieveClickStats(w, ctx, db, id)
-	if respJSON == nil {
-		return
-	}
-	writeRespToTemplate(w, respJSON, "track_result.html")
+	totalClicks, lastVisited := retrieveClickStats(w, ctx, db, id)
+
+	// Write Response
+	htmlSnippet := fmt.Sprintf(`
+		<div class="space-y-2 p-4 px-4 sm:px-6 md:px-8 bg-green-100 text-green-700 rounded">
+			<div class="flex items-center gap-1">
+				<span class="flex items-center gap-2 text-gray-600 font-semibold w-32 shrink-0">
+					<i data-lucide="bar-chart-2" class="w-4 h-4"></i>Total Clicks
+				</span>
+				<span class="font-semibold">%d</span>
+			</div>
+			<div class="flex items-center gap-1">
+				<span class="flex items-center gap-2 text-gray-600 font-semibold w-32 shrink-0">
+					<i data-lucide="clock" class="w-4 h-4"></i>Last Visited
+				</span>
+				<span id="last-visited" data-utc="%s" class="font-semibold">—</span>
+			</div>
+		</div>
+	`, totalClicks, lastVisited)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(htmlSnippet))
 }
 
 /**** Helper Methods below ****/
@@ -179,32 +202,27 @@ func retrieveLongURL(ctx context.Context, db *sql.DB, rdb *redis.Client, code st
 	return id, longURL
 }
 
-func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) map[string]string {
+func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) (int, string) {
 	var (
-		longURL     string
-		clickCount  int
-		lastVisited sql.NullTime
+		clickCount    int
+		lastVisitedAt sql.NullTime
 	)
-	err := db.QueryRowContext(ctx, "SELECT long_url, click_count, last_visited_at FROM urls WHERE id = ?", id).
-		Scan(&longURL, &clickCount, &lastVisited)
+	err := db.QueryRowContext(ctx, "SELECT click_count, last_visited_at FROM urls WHERE id = ?", id).
+		Scan(&clickCount, &lastVisitedAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "Link not found!", http.StatusNotFound)
-			return nil
+			return 0, ""
 		} else {
 			http.Error(w, "Database error", http.StatusInternalServerError)
-			return nil
+			return 0, ""
 		}
 	}
-	clickStats := map[string]string{
-		"LongURL":     longURL,
-		"TotalClicks": fmt.Sprintf("%d", clickCount),
-		"LastVisited": "Never", // fallback value
+	lastVisited := "Never" // fallback value
+	if lastVisitedAt.Valid {
+		lastVisited = lastVisitedAt.Time.UTC().Format(time.RFC3339)
 	}
-	if lastVisited.Valid {
-		clickStats["LastVisited"] = lastVisited.Time.UTC().Format(time.RFC3339)
-	}
-	return clickStats
+	return clickCount, lastVisited
 }
 
 func storeShortAndLongKeysInRedis(ctx context.Context, rdb *redis.Client, code string, longURL string, id int64) {
@@ -231,14 +249,15 @@ func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 		protocol = "http"
 	}
 	shortURL := fmt.Sprintf("%s://%s/%s", protocol, r.Host, code)
-	respJSON := map[string]string{
-		"ShortURL": shortURL,
-	}
-	writeRespToTemplate(w, respJSON, "shorten_result.html")
-}
 
-func writeRespToTemplate(w http.ResponseWriter, respJSON map[string]string, tmplName string) {
-	tmpl := template.Must(template.ParseFiles("static/partials/" + tmplName))
+	// Write Response
+	htmlSnippet := fmt.Sprintf(`
+		<div class="p-4 bg-green-100 text-green-700 rounded">
+			<p class="mb-1 font-semibold">Short URL:</p> 
+			<a href="%s" target="_blank" class="underline font-medium">%s</a>
+		</div>
+	`, shortURL, shortURL)
+
 	w.WriteHeader(http.StatusCreated)
-	_ = tmpl.Execute(w, respJSON)
+	w.Write([]byte(htmlSnippet))
 }
