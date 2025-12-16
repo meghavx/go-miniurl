@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"net/http"
 	"time"
-	"url-shortener/internal/web/ui"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -21,9 +20,6 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 	router.Handle("/static/*",
 		http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))),
 	)
-
-	// UI fragments
-	router.Get("/ui/form", ui.RenderForm)
 
 	// index
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {

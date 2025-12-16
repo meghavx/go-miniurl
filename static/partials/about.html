@@ -1,0 +1,123 @@
+<div class="w-full flex justify-center py-6 px-4">
+    <div class="w-full max-w-5xl flex flex-col">
+
+        <!-- APP DESC -->
+        <div class="text-center mt-6 mb-8 px-4">
+            <p class="text-base sm:text-lg text-gray-700 leading-relaxed">
+                A fast and secure <b>URL shortener</b> designed to turn long URLs into clean, shareable links with ease.
+            </p>
+        </div>
+
+        <!-- APP SPECS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 border border-gray-200 rounded-xl py-12 px-10">
+
+            <!-- LEFT COLUMN -->
+            <div class="space-y-8">
+                <div class="space-y-2">
+                    <h2 class="text-xl font-bold text-[#3163EA]">ADDITIONAL FEATURES</h2>
+                    <ul class="list-disc list-inside ml-4 space-y-1 text-gray-700 text-sm sm:text-base">
+                        <li>Preview original URL before visiting (safer access)</li>
+                        <li>Track usage — total clicks, last visit date and time info</li>
+                    </ul>
+                </div>
+
+                <div class="space-y-2">
+                    <h2 class="text-lg font-bold text-[#3163EA]">TECH STACK</h2>
+                    <ul class="list-disc list-inside ml-4 space-y-1 text-gray-700 text-sm sm:text-base">
+                        <li><b>Backend:</b> Go </li>
+                        <li><b>Database:</b> SQLite </li>
+                        <li><b>Caching &amp; Analytics:</b> Redis</li>
+                        <li><b>Frontend:</b> HTML +
+                            <a href="https://htmx.org/" target="_blank" rel="noopener" class="hover:text-[#3163EA]">HTMX</a>
+                            , TailwindCSS
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="space-y-8">
+                <!-- SYSTEM DESIGN ENHANCEMENTS -->
+                <div class="space-y-3">
+                    <h2 class="text-xl font-bold text-[#3163EA]">SYSTEM DESIGN ENHANCEMENTS</h2>
+                    <ul class="space-y-5 text-gray-700 text-sm sm:text-base">
+                        <li>
+                            <div class="font-semibold text-gray-800">PERFORMANCE &amp; SCALABILITY</div>
+                            <ul class="list-disc list-inside ml-4 space-y-1 mt-1">
+                                <li><span class="font-semibold text-gray-500">Layered lookup:</span>
+                                    <a href="https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/"
+                                       target="_blank" rel="noopener" class="hover:text-[#3163EA]">
+                                        Bloom filter
+                                    </a>
+                                    →
+                                    <a href="https://redis.io/learn/howtos/solutions/microservices/caching"
+                                       target="_blank" rel="noopener" class="hover:text-[#3163EA]">
+                                        Redis cache
+                                    </a>
+                                    → DB
+                                </li>
+                                <li>
+                                    <a href="https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/"
+                                       target="_blank" rel="noopener" class="hover:text-[#3163EA]">
+                                        Bloom filter
+                                    </a>
+                                    to <span class="font-semibold text-gray-500">optimize duplicate checks</span>
+                                </li>
+                                <li>
+                                    <a href="https://redis.io/learn/howtos/solutions/microservices/caching"
+                                       target="_blank" rel="noopener" class="hover:text-[#3163EA]">
+                                        Redis cache
+                                    </a>
+                                    for <span class="font-semibold text-gray-500">fast lookups</span>
+                                </li>
+                                <li><span class="font-semibold text-gray-500">Real-time analytics</span> via
+                                    <a href="https://redis.io/glossary/pub-sub/"
+                                       target="_blank" rel="noopener" class="hover:text-[#3163EA]">
+                                        Redis Pub/Sub
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <div class="font-semibold text-gray-800">SECURITY &amp; ABUSE PREVENTION</div>
+                            <ul class="list-disc list-inside ml-4 space-y-1 mt-1">
+                                <li>Robust <span class="font-semibold text-gray-500">URL validation</span> to block
+                                    <a href="https://www.du.edu/it/services/security/5-url-warning-signs"
+                                       target="_blank" rel="noopener" class="hover:text-[#3163EA]">
+                                        unsafe URLs
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="https://redis.io/glossary/rate-limiting/"
+                                       target="_blank" rel="noopener" class="font-semibold text-gray-500 hover:text-[#3163EA]">
+                                        Rate limiting
+                                    </a>
+                                    (IP-level + global)
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- GITHUB REPO -->
+        <div class="w-full flex justify-center mt-12 mb-6">
+            <a href="https://github.com/meghavx/short.ly"
+               target="_blank" rel="noopener"
+               class="flex items-center gap-2 text-[#3163EA] transition text-sm sm:text-base">
+                <i data-lucide="github" class="w-5 h-5"></i>
+                <span>GitHub Repository</span>
+            </a>
+        </div>
+
+    </div>
+</div>
+
+
+
+
+
+
+

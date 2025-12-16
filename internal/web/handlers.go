@@ -5,14 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"url-shortener/internal/analytics"
 
 	"github.com/redis/go-redis/v9"
 
-	//"url-shortener/internal/analytics"
 	"url-shortener/internal/bloom"
 	"url-shortener/internal/utils"
 )
@@ -77,18 +78,8 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 		return
 	}
 
-	/* // Publish click event
-	analytics.PublishClickEvent(rdb, id) */
-
-	// Update DB with click count
-	ts := time.Now().UTC().Format(time.RFC3339)
-	if _, err := db.ExecContext(ctx, `
-		UPDATE urls
-		SET click_count = COALESCE(click_count, 0) + 1, last_visited_at = ?
-		WHERE id = ?`,
-		ts, id); err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-	}
+	// Publish click event
+	analytics.PublishClickEvent(rdb, id)
 
 	http.Redirect(w, r, longURL, http.StatusFound)
 }
@@ -107,17 +98,10 @@ func PreviewURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		http.Error(w, "Link not found!", http.StatusNotFound)
 		return
 	}
-
-	// Write Response
-	htmlSnippet := fmt.Sprintf(`
-		<div class="p-4 bg-green-100 text-green-700 rounded">
-			<p class="mb-1 font-bold">Original URL:</p>
-			<a href="%s" target="_blank" class="underline font-medium">%s</a>
-		</div>
-	`, longURL, longURL)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(htmlSnippet))
+	respJSON := map[string]string{
+		"LongURL": longURL,
+	}
+	writeRespToTemplate(w, respJSON, "preview_result.html")
 }
 
 func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -130,28 +114,11 @@ func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 	id := utils.Base62Decode(code)
-	totalClicks, lastVisited := retrieveClickStats(w, ctx, db, id)
-
-	// Write Response
-	htmlSnippet := fmt.Sprintf(`
-		<div class="space-y-2 p-4 px-4 sm:px-6 md:px-8 bg-green-100 text-green-700 rounded">
-			<div class="flex items-center gap-1">
-				<span class="flex items-center gap-2 text-gray-600 font-semibold w-32 shrink-0">
-					<i data-lucide="bar-chart-2" class="w-4 h-4"></i>Total Clicks
-				</span>
-				<span class="font-semibold">%d</span>
-			</div>
-			<div class="flex items-center gap-1">
-				<span class="flex items-center gap-2 text-gray-600 font-semibold w-32 shrink-0">
-					<i data-lucide="clock" class="w-4 h-4"></i>Last Visited
-				</span>
-				<span id="last-visited" data-utc="%s" class="font-semibold">—</span>
-			</div>
-		</div>
-	`, totalClicks, lastVisited)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(htmlSnippet))
+	respJSON := retrieveClickStats(w, ctx, db, id)
+	if respJSON == nil {
+		return
+	}
+	writeRespToTemplate(w, respJSON, "track_result.html")
 }
 
 /**** Helper Methods below ****/
@@ -212,27 +179,32 @@ func retrieveLongURL(ctx context.Context, db *sql.DB, rdb *redis.Client, code st
 	return id, longURL
 }
 
-func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) (int, string) {
+func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) map[string]string {
 	var (
-		clickCount    int
-		lastVisitedAt sql.NullTime
+		longURL     string
+		clickCount  int
+		lastVisited sql.NullTime
 	)
-	err := db.QueryRowContext(ctx, "SELECT click_count, last_visited_at FROM urls WHERE id = ?", id).
-		Scan(&clickCount, &lastVisitedAt)
+	err := db.QueryRowContext(ctx, "SELECT long_url, click_count, last_visited_at FROM urls WHERE id = ?", id).
+		Scan(&longURL, &clickCount, &lastVisited)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "Link not found!", http.StatusNotFound)
-			return 0, ""
+			return nil
 		} else {
 			http.Error(w, "Database error", http.StatusInternalServerError)
-			return 0, ""
+			return nil
 		}
 	}
-	lastVisited := "Never" // fallback value
-	if lastVisitedAt.Valid {
-		lastVisited = lastVisitedAt.Time.UTC().Format(time.RFC3339)
+	clickStats := map[string]string{
+		"LongURL":     longURL,
+		"TotalClicks": fmt.Sprintf("%d", clickCount),
+		"LastVisited": "Never", // fallback value
 	}
-	return clickCount, lastVisited
+	if lastVisited.Valid {
+		clickStats["LastVisited"] = lastVisited.Time.UTC().Format(time.RFC3339)
+	}
+	return clickStats
 }
 
 func storeShortAndLongKeysInRedis(ctx context.Context, rdb *redis.Client, code string, longURL string, id int64) {
@@ -259,15 +231,14 @@ func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 		protocol = "http"
 	}
 	shortURL := fmt.Sprintf("%s://%s/%s", protocol, r.Host, code)
+	respJSON := map[string]string{
+		"ShortURL": shortURL,
+	}
+	writeRespToTemplate(w, respJSON, "shorten_result.html")
+}
 
-	// Write Response
-	htmlSnippet := fmt.Sprintf(`
-		<div class="p-4 bg-green-100 text-green-700 rounded">
-			<p class="mb-1 font-semibold">Short URL:</p> 
-			<a href="%s" target="_blank" class="underline font-medium">%s</a>
-		</div>
-	`, shortURL, shortURL)
-
+func writeRespToTemplate(w http.ResponseWriter, respJSON map[string]string, tmplName string) {
+	tmpl := template.Must(template.ParseFiles("static/partials/" + tmplName))
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(htmlSnippet))
+	_ = tmpl.Execute(w, respJSON)
 }

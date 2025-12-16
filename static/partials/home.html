@@ -1,0 +1,28 @@
+<div class="w-full flex flex-col items-center text-center py-12 px-4 -mt-16">
+    <h1 class="text-4xl md:text-5xl sm:text-6xl md:text-8xl leading-tight">
+        <span class="text-[#0F1729]">Welcome to</span>
+        <span class="text-[#3163EA] tracking-tighter font-light">Go MiniURL</span>
+    </h1>
+
+    <p class="mt-6 max-w-2xl text-sm sm:text-base md:text-lg text-gray-500 leading-relaxed">
+        A lightweight URL shortener that’s fast and secure.
+    </p>
+
+    <div class="mt-12 flex flex-col items-center gap-4 text-white font-medium w-full max-w-xs sm:max-w-md">
+        <button class="w-[80%] p-3 sm:p-4 rounded-full bg-[#3163EA] shadow-sm hover:opacity-90 transition text-sm sm:text-base"
+                hx-get="/static/partials/shorten.html"
+                hx-target="#main-content">
+            Shorten a Link
+        </button>
+        <button class="w-[70%] p-3 sm:p-4 rounded-full bg-[#223F9F] shadow-sm hover:opacity-90 transition text-sm sm:text-base"
+                hx-get="/static/partials/preview.html"
+                hx-target="#main-content">
+            Preview a Link
+        </button>
+        <button class="w-[50%] p-3 sm:p-4 rounded-full bg-[#0F1729] shadow-sm hover:opacity-90 transition text-sm sm:text-base"
+                hx-get="/static/partials/track.html"
+                hx-target="#main-content">
+            Track Clicks
+        </button>
+    </div>
+</div>
