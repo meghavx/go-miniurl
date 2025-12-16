@@ -19,7 +19,12 @@ func main() {
 	ctx := context.Background()
 
 	rdb := db.InitRedis()
-	sqlite := db.InitSQLite()
+
+	sqlitePath := os.Getenv("SQLITE_PATH")
+	if sqlitePath == "" {
+		sqlitePath = "./urls.db"
+	}
+	sqlite := db.InitSQLite(sqlitePath)
 	defer sqlite.Close()
 
 	// Subscribe to click events

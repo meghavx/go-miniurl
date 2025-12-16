@@ -16,6 +16,12 @@ func InitRedis() *redis.Client {
 		return redis.NewClient(opt)
 	}
 
+	if addr := os.Getenv("REDIS_ADDR"); addr != "" {
+		return redis.NewClient(&redis.Options{
+			Addr: addr,
+		})
+	}
+
 	// fallback for local dev
 	return redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -12,7 +13,12 @@ import (
 )
 
 func main() {
-	sqlite := db.InitSQLite()
+	sqlitePath := os.Getenv("SQLITE_PATH")
+	if sqlitePath == "" {
+		sqlitePath = "./urls.db"
+	}
+
+	sqlite := db.InitSQLite(sqlitePath)
 	rdb := db.InitRedis()
 
 	bloom.InitBloom(1_000_000, 0.01)

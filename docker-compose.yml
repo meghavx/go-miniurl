@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  server:
+    build: .
+    command: ["./server"]
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_ADDR: redis:6379
+      SQLITE_PATH: /data/urls.db
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    command: ["./worker"]
+    environment:
+      REDIS_ADDR: redis:6379
+      SQLITE_PATH: /data/urls.db
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      - redis
+
+volumes:
+  sqlite-data:
