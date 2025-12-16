@@ -25,23 +25,20 @@
                 <div class="flex md:flex-col gap-2 justify-center text-gray-700 font-medium">
                     <button id="shorten-btn"
                             class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                            hx-get="/static/partials/shorten.html"
-                            hx-target="#app-area"
-                            hx-on="htmx:beforeRequest: setActive(this)">
+                            hx-get="/ui/form?label=Paste+Your+Long+URL&placeholder=https://example.com/very/long/url&endpoint=/shorten-url"
+                            hx-target="#app-area" hx-on="htmx:beforeRequest: setActive(this)">
                         <i data-lucide="link" class="w-4 h-4"></i>
                         <span>Shorten Link</span>
                     </button>
                     <button class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                            hx-get="/static/partials/preview.html"
-                            hx-target="#app-area"
-                            hx-on="htmx:beforeRequest: setActive(this)">
+                            hx-get="/ui/form?label=Enter+Short+URL&placeholder=http://localhost:8080/abc123&endpoint=/preview-url"
+                            hx-target="#app-area" hx-on="htmx:beforeRequest: setActive(this)">
                         <i data-lucide="eye" class="w-4 h-4"></i>
                         <span>Preview Link</span>
                     </button>
                     <button class="nav-btn flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-sm"
-                            hx-get="/static/partials/track.html"
-                            hx-target="#app-area"
-                            hx-on="htmx:beforeRequest: setActive(this)">
+                            hx-get="/ui/form?label=Enter+Short+URL&placeholder=http://localhost:8080/abc123&endpoint=/track-clicks"
+                            hx-target="#app-area" hx-on="htmx:beforeRequest: setActive(this)">
                         <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
                         <span>Track Clicks</span>
                     </button>
@@ -49,9 +46,10 @@
             </aside>
 
             <!-- APP AREA -->
-            <section id="app-area" class="flex-1 p-6 pt-10 md:pt-16 text-gray-400 text-sm"
-                     hx-get="/static/partials/shorten.html" hx-trigger="load">
-                Select an action to get started
+            <section id="app-area" class="flex-1 overflow-y-auto p-6 pt-10 md:pt-16 pb-28">
+                <div class="flex w-full max-w-xl mx-auto text-gray-400 text-base">
+                    Select an option to get started
+                </div>
             </section>
         </main>
 
@@ -59,18 +57,13 @@
         <footer class="fixed bottom-0 left-0 right-0 bg-white border-t py-3">
             <div class="flex flex-col items-center gap-4 py-2 text-gray-500 text-xs">
             <div class="flex gap-4">
-                <a href="https://www.linkedin.com/in/meghaaverma" target="_blank"
-                   class="hover:text-gray-800 transition">
+                <a href="https://www.linkedin.com/in/meghaaverma" target="_blank" class="hover:text-gray-800 transition">
                     <i data-lucide="linkedin" class="w-4 h-4"></i>
                 </a>
-
-                <a href="https://github.com/meghavx" target="_blank"
-                   class="hover:text-gray-800 transition">
+                <a href="https://github.com/meghavx" target="_blank" class="hover:text-gray-800 transition">
                     <i data-lucide="github" class="w-4 h-4"></i>
                 </a>
-
-                <a href="mailto:meghaverma.pi@gmail.com"
-                   class="hover:text-gray-800 transition">
+                <a href="mailto:meghaverma.pi@gmail.com" class="hover:text-gray-800 transition">
                     <i data-lucide="mail" class="w-4 h-4"></i>
                 </a>
             </div>

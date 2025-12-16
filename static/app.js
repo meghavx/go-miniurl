@@ -10,10 +10,6 @@ document.body.addEventListener("htmx:responseError", e => {
 });
 
 // Sidebar active state
-document.addEventListener("DOMContentLoaded", () =>
-    setActive(document.getElementById("shorten-btn"))
-);
-
 window.setActive = btn => {
     const activeStateClasses = ["bg-blue-50", "text-blue-700"]
     document.querySelectorAll(".nav-btn").forEach(
@@ -21,6 +17,23 @@ window.setActive = btn => {
     );
     btn.classList.add(...activeStateClasses);
 };
+
+// Autofocus textarea
+document.body.addEventListener("htmx:afterSwap", e => {
+    const input = e.target.querySelector?.("#url-input");
+    if (input) input.focus();
+});
+
+// Submit for on ENTER key press
+document.body.addEventListener("keydown", e => {
+    if (e.isComposing) return;
+
+    const t = e.target;
+    if (t?.id === "url-input" && e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        t.form?.requestSubmit();
+    }
+});
 
 // UTC → Local time
 const convertUTCToLocal = () => {
