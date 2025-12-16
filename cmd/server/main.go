@@ -8,7 +8,7 @@ import (
 
 	"url-shortener/internal/bloom"
 	"url-shortener/internal/db"
-	router "url-shortener/internal/http"
+	router "url-shortener/internal/web"
 )
 
 func main() {
