@@ -254,8 +254,8 @@ func storeShortKeyInRedis(ctx context.Context, rdb *redis.Client, code string, l
 }
 
 func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
-	protocol := "https"
-	if r.TLS == nil {
+	protocol := r.Header.Get("X-Forwarded-Proto")
+	if protocol == "" {
 		protocol = "http"
 	}
 	shortURL := fmt.Sprintf("%s://%s/%s", protocol, r.Host, code)
