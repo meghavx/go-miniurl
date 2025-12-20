@@ -35,7 +35,7 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 		sub.Use(ratelimit.Global(rdb, 50, time.Minute))
 
 		// shorten url
-		sub.With(ratelimit.PerIP(rdb, 10, time.Minute)).
+		sub.With(ratelimit.PerIP(rdb, 5, time.Minute)).
 			Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
 				ShortenURL(w, r, db, rdb)
 			})
