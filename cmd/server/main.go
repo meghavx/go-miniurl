@@ -25,7 +25,7 @@ func main() {
 	if err := core.PopulateBloom(sqlite); err != nil {
 		log.Println("Bloom populate failed: " + err.Error())
 	}
-	log.Println("Bloom enabled?", core.EnabledBloom)
+	log.Println("Bloom enabled?", core.BloomEnabled)
 
 	r := router.New(sqlite, rdb)
 

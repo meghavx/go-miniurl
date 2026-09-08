@@ -8,12 +8,12 @@ import (
 
 var (
 	Filter       *bf.BloomFilter
-	EnabledBloom bool
+	BloomEnabled bool
 )
 
 func InitBloom(capacity uint, falsePositiveRate float64) {
 	Filter = bf.NewWithEstimates(capacity, falsePositiveRate)
-	EnabledBloom = false
+	BloomEnabled = false
 }
 
 func PopulateBloom(db *sql.DB) error {
@@ -33,16 +33,16 @@ func PopulateBloom(db *sql.DB) error {
 		Filter.AddString(url)
 		count++
 	}
-	EnabledBloom = true
+	BloomEnabled = true
 	return rows.Err()
 }
 
 func AddToBloom(url string) {
-	if EnabledBloom {
+	if BloomEnabled {
 		Filter.AddString(url)
 	}
 }
 
 func MightExistInBloom(url string) bool {
-	return EnabledBloom && Filter.TestString(url)
+	return BloomEnabled && Filter.TestString(url)
 }
