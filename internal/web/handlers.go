@@ -27,18 +27,21 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		return
 	}
 
-	if core.MightExistInBloom(longURL) {
-		// Try Redis
-		longKey := "long_to_id:" + core.HashURL(longURL)
-		if cachedID, err := rdb.Get(ctx, longKey).Result(); err == nil {
-			id, _ = strconv.ParseInt(cachedID, 10, 64)
+	// Try Redis first
+	longKey := "long_to_id:" + core.HashURL(longURL)
+	if cachedID, err := rdb.Get(ctx, longKey).Result(); err == nil {
+		id, err = strconv.ParseInt(cachedID, 10, 64)
+		if err == nil {
 			code := core.Base62Encode(uint64(id))
 			writeShortURL(w, r, code)
 			return
 		}
+	}
 
-		// Redis miss -> Try SQLite
-		err := db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longURL).Scan(&id)
+	// Redis miss/failure -> check bloom filter before trying SQLite
+	if !core.BloomEnabled || core.MightExistInBloom(longURL) {
+		// Try SQLite
+		err := db.QueryRowContext(ctx, "SELECT id FROM urls WHERE long_url = ?", longURL).Scan(&id)
 		if err == nil {
 			code := core.Base62Encode(uint64(id))
 			storeShortAndLongKeysInRedis(ctx, rdb, code, longURL, id)
@@ -51,17 +54,22 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		}
 	}
 
-	// Definitely a NEW URL -> Insert in DB
-	res, err := db.Exec("INSERT INTO urls(long_url) VALUES(?)", longURL)
+	// URL not found in SQLite, or Bloom confirmed it is absent -> Insert in DB
+	res, err := db.ExecContext(ctx, "INSERT INTO urls(long_url) VALUES(?)", longURL)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
-	id, _ = res.LastInsertId()
+	id, err = res.LastInsertId()
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
 	code := core.Base62Encode(uint64(id))
 
-	// Store in Bloom and Redis
+	// Update Bloom and store in Redis
 	core.AddToBloom(longURL)
 	storeShortAndLongKeysInRedis(ctx, rdb, code, longURL, id)
 	writeShortURL(w, r, code)
