@@ -4,13 +4,12 @@ import (
 	"database/sql"
 	"net/http"
 	"time"
-	"url-shortener/internal/web/ui"
 
+	"url-shortener/internal/core"
+	
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/redis/go-redis/v9"
-
-	"url-shortener/internal/middleware/ratelimit"
 )
 
 func New(db *sql.DB, rdb *redis.Client) http.Handler {
@@ -23,7 +22,7 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 	)
 
 	// UI fragments
-	router.Get("/ui/form", ui.RenderForm)
+	router.Get("/ui/form", RenderForm)
 
 	// index
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -32,10 +31,10 @@ func New(db *sql.DB, rdb *redis.Client) http.Handler {
 
 	// ---------------- RATE LIMITED GROUP -----------------
 	router.Group(func(sub chi.Router) {
-		sub.Use(ratelimit.Global(rdb, 50, time.Minute))
+		sub.Use(core.GlobalRateLimit(rdb, 50, time.Minute))
 
 		// shorten url
-		sub.With(ratelimit.PerIP(rdb, 10, time.Minute)).
+		sub.With(core.PerIPRateLimit(rdb, 10, time.Minute)).
 			Post("/shorten-url", func(w http.ResponseWriter, r *http.Request) {
 				ShortenURL(w, r, db, rdb)
 			})

@@ -10,9 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"url-shortener/internal/analytics"
+	"url-shortener/internal/core"
 	"url-shortener/internal/db"
-	"url-shortener/internal/events"
 )
 
 func main() {
@@ -28,7 +27,7 @@ func main() {
 	defer sqlite.Close()
 
 	// Subscribe to click events
-	sub := rdb.Subscribe(ctx, analytics.ClickChannel)
+	sub := rdb.Subscribe(ctx, core.ClickChannel)
 	defer sub.Close()
 
 	channel := sub.Channel()
@@ -57,7 +56,7 @@ runLoop:
 }
 
 func handleMessage(dbConn *sql.DB, payload string) {
-	var event events.ClickEvent
+	var event core.ClickEvent
 
 	if err := json.Unmarshal([]byte(payload), &event); err != nil {
 		fmt.Println("Worker: invalid event:", err)

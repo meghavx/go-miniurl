@@ -19,7 +19,6 @@ RUN CGO_ENABLED=1 GOOS=linux \
 RUN CGO_ENABLED=1 GOOS=linux \
     go build -o worker ./cmd/worker
 
-
 # ---- Runtime stage ----
 FROM alpine:3.19
 

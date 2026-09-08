@@ -1,12 +1,60 @@
-package utils
+package core
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"net"
+	"net/http"
 	"net/url"
+	"strings"
 )
+
+var chars = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func Base62Encode(num uint64) string {
+	num = 100_000_000 - num
+
+	res := make([]byte, 0)
+	for num > 0 {
+		res = append(res, chars[num%62])
+		num /= 62
+	}
+	for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+		res[i], res[j] = res[j], res[i]
+	}
+	return string(res)
+}
+
+func Base62Decode(s string) uint64 {
+	var num uint64
+	for i := 0; i < len(s); i++ {
+		num = num*62 + uint64(bytes.IndexByte(chars, s[i]))
+	}
+	return 100_000_000 - num
+}
+
+// GetIP returns the real client IP, even when behind reverse proxies
+func GetIP(r *http.Request) string {
+	// 1. Check X-Forwarded-For
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return strings.Split(xff, ",")[0]
+	}
+
+	// 2. Check X-Real-IP (some proxies use this)
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return strings.Split(xrip, ",")[0]
+	}
+
+	// 3. Fallback: extract IP from r.RemoteAddr (format: "IP:port")
+	if ip, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return ip
+	}
+
+	// 4. Final fallback (rare): return entire RemoteAddr
+	return r.RemoteAddr
+}
 
 // ValidateLongURL checks whether a given URL is safe and valid
 func ValidateLongURL(rawURL string) (string, error) {

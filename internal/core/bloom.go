@@ -1,4 +1,4 @@
-package bloom
+package core
 
 import (
 	"database/sql"
@@ -7,16 +7,16 @@ import (
 )
 
 var (
-	Filter  *bf.BloomFilter
-	Enabled bool
+	Filter       *bf.BloomFilter
+	EnabledBloom bool
 )
 
 func InitBloom(capacity uint, falsePositiveRate float64) {
 	Filter = bf.NewWithEstimates(capacity, falsePositiveRate)
-	Enabled = false
+	EnabledBloom = false
 }
 
-func Populate(db *sql.DB) error {
+func PopulateBloom(db *sql.DB) error {
 	rows, err := db.Query("SELECT long_url FROM urls")
 	if err != nil {
 		return err
@@ -33,16 +33,16 @@ func Populate(db *sql.DB) error {
 		Filter.AddString(url)
 		count++
 	}
-	Enabled = true
+	EnabledBloom = true
 	return rows.Err()
 }
 
-func Add(url string) {
-	if Enabled {
+func AddToBloom(url string) {
+	if EnabledBloom {
 		Filter.AddString(url)
 	}
 }
 
-func MightExist(url string) bool {
-	return Enabled && Filter.TestString(url)
+func MightExistInBloom(url string) bool {
+	return EnabledBloom && Filter.TestString(url)
 }

@@ -5,16 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-	"url-shortener/internal/analytics"
+
+	"url-shortener/internal/core"
 
 	"github.com/redis/go-redis/v9"
-
-	"url-shortener/internal/bloom"
-	"url-shortener/internal/utils"
 )
 
 func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.Client) {
@@ -28,12 +27,12 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		return
 	}
 
-	if bloom.MightExist(longURL) {
+	if core.MightExistInBloom(longURL) {
 		// Try Redis
-		longKey := "long_to_id:" + utils.HashURL(longURL)
+		longKey := "long_to_id:" + core.HashURL(longURL)
 		if cachedID, err := rdb.Get(ctx, longKey).Result(); err == nil {
 			id, _ = strconv.ParseInt(cachedID, 10, 64)
-			code := utils.Base62Encode(uint64(id))
+			code := core.Base62Encode(uint64(id))
 			writeShortURL(w, r, code)
 			return
 		}
@@ -41,7 +40,7 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 		// Redis miss -> Try SQLite
 		err := db.QueryRow("SELECT id FROM urls WHERE long_url = ?", longURL).Scan(&id)
 		if err == nil {
-			code := utils.Base62Encode(uint64(id))
+			code := core.Base62Encode(uint64(id))
 			storeShortAndLongKeysInRedis(ctx, rdb, code, longURL, id)
 			writeShortURL(w, r, code)
 			return
@@ -60,10 +59,10 @@ func ShortenURL(w http.ResponseWriter, r *http.Request, db *sql.DB, rdb *redis.C
 	}
 
 	id, _ = res.LastInsertId()
-	code := utils.Base62Encode(uint64(id))
+	code := core.Base62Encode(uint64(id))
 
 	// Store in Bloom and Redis
-	bloom.Add(longURL)
+	core.AddToBloom(longURL)
 	storeShortAndLongKeysInRedis(ctx, rdb, code, longURL, id)
 	writeShortURL(w, r, code)
 }
@@ -78,7 +77,7 @@ func RedirectURL(w http.ResponseWriter, r *http.Request, code string, db *sql.DB
 	}
 
 	// Publish click event
-	analytics.PublishClickEvent(rdb, id)
+	core.PublishClickEvent(rdb, id)
 
 	http.Redirect(w, r, longURL, http.StatusFound)
 }
@@ -119,7 +118,7 @@ func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	id := utils.Base62Decode(code)
+	id := core.Base62Decode(code)
 	totalClicks, lastVisited := retrieveClickStats(w, ctx, db, id)
 
 	// Write Response
@@ -153,7 +152,7 @@ func validateShortenRequest(r *http.Request) (string, error) {
 		return "", err
 	}
 	// Validate URL
-	url, err = utils.ValidateLongURL(url)
+	url, err = core.ValidateLongURL(url)
 	if err != nil {
 		return url, err
 	}
@@ -167,7 +166,7 @@ func validatePreviewRequest(r *http.Request) (string, error) {
 		return "", err
 	}
 	// Validate URL
-	code, err := utils.ValidateShortURL(url, r.Host)
+	code, err := core.ValidateShortURL(url, r.Host)
 	if err != nil {
 		return code, err
 	}
@@ -186,7 +185,7 @@ func ParseAndGetURL(r *http.Request) (string, error) {
 }
 
 func retrieveLongURL(ctx context.Context, db *sql.DB, rdb *redis.Client, code string) (uint64, string) {
-	id := utils.Base62Decode(code)
+	id := core.Base62Decode(code)
 	var longURL string
 
 	// Try Redis
@@ -229,7 +228,7 @@ func storeShortAndLongKeysInRedis(ctx context.Context, rdb *redis.Client, code s
 	// Store code -> longURL mapping
 	storeShortKeyInRedis(ctx, rdb, code, longURL)
 
-	hashedURL := utils.HashURL(longURL)
+	hashedURL := core.HashURL(longURL)
 	longKey := "long_to_id:" + hashedURL
 	ttl := 24 * time.Hour
 
@@ -260,4 +259,34 @@ func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(htmlSnippet))
+}
+
+var formTmpl = template.Must(
+	template.ParseFiles("static/partials/url-form.html"),
+)
+
+func RenderForm(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		Label       string
+		Placeholder string
+		Endpoint    string
+	}{
+		Label:       r.URL.Query().Get("label"),
+		Placeholder: r.URL.Query().Get("placeholder"),
+		Endpoint:    r.URL.Query().Get("endpoint"),
+	}
+
+	// Sensible defaults
+	if data.Label == "" {
+		data.Label = "Enter URL"
+	}
+	if data.Placeholder == "" {
+		data.Placeholder = "https://example.com"
+	}
+	if data.Endpoint == "" {
+		data.Endpoint = "/shorten-url"
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	_ = formTmpl.Execute(w, data)
 }

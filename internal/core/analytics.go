@@ -1,4 +1,4 @@
-package analytics
+package core
 
 import (
 	"context"
@@ -7,17 +7,20 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-
-	"url-shortener/internal/events"
 )
 
 const ClickChannel = "click_events"
+
+type ClickEvent struct {
+	ID uint64 `json:"id"`
+	TS string `json:"ts"`
+}
 
 // PublishClickEvent sends a non-blocking event to Redis Pub/Sub
 func PublishClickEvent(rdb *redis.Client, id uint64) {
 	// Runs in the background
 	go func() {
-		event := events.ClickEvent{
+		event := ClickEvent{
 			ID: id,
 			TS: time.Now().UTC().Format(time.RFC3339),
 		}
