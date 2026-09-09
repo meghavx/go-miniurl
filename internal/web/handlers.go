@@ -269,11 +269,15 @@ func writeShortURL(w http.ResponseWriter, r *http.Request, code string) {
 	w.Write([]byte(htmlSnippet))
 }
 
-var formTmpl = template.Must(
-	template.ParseFiles("static/partials/url-form.html"),
-)
+var formTmpl *template.Template
 
 func RenderForm(w http.ResponseWriter, r *http.Request) {
+	if formTmpl == nil {
+		formTmpl = template.Must(
+			template.ParseFiles("static/partials/url-form.html"),
+		)
+	}
+
 	data := struct {
 		Label       string
 		Placeholder string
