@@ -127,7 +127,16 @@ func TrackClicks(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 	id := core.Base62Decode(code)
-	totalClicks, lastVisited := retrieveClickStats(w, ctx, db, id)
+	totalClicks, lastVisited, err := retrieveClickStats(w, ctx, db, id)
+
+	if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            http.Error(w, "Link not found!", http.StatusNotFound)
+        } else {
+            http.Error(w, "Database error", http.StatusInternalServerError)
+        }
+        return
+    }
 
 	// Write Response
 	htmlSnippet := fmt.Sprintf(`
@@ -209,7 +218,7 @@ func retrieveLongURL(ctx context.Context, db *sql.DB, rdb *redis.Client, code st
 	return id, longURL
 }
 
-func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) (int, string) {
+func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, id uint64) (int, string, error) {
 	var (
 		clickCount    int
 		lastVisitedAt sql.NullTime
@@ -217,19 +226,13 @@ func retrieveClickStats(w http.ResponseWriter, ctx context.Context, db *sql.DB, 
 	err := db.QueryRowContext(ctx, "SELECT click_count, last_visited_at FROM urls WHERE id = ?", id).
 		Scan(&clickCount, &lastVisitedAt)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "Link not found!", http.StatusNotFound)
-			return 0, ""
-		} else {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return 0, ""
-		}
-	}
+        return 0, "", err
+    }
 	lastVisited := "Never" // fallback value
 	if lastVisitedAt.Valid {
 		lastVisited = lastVisitedAt.Time.UTC().Format(time.RFC3339)
 	}
-	return clickCount, lastVisited
+	return clickCount, lastVisited, nil
 }
 
 func storeShortAndLongKeysInRedis(ctx context.Context, rdb *redis.Client, code string, longURL string, id int64) {
