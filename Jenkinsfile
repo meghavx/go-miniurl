@@ -22,6 +22,28 @@ pipeline {
                 junit 'test-results.xml'
             }
         }
+        
+        stage('Build Application Image') {
+            steps {
+                sh 'docker build --target runtime -t meghavx/go-miniurl:latest .'
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        docker push meghavx/go-miniurl:latest
+                        docker logout
+                    '''
+                }
+            }
+        }
     }
 
     post {
